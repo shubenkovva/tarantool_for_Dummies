@@ -13,18 +13,27 @@ import datetime
 
 current_date = datetime.date.today()
 
-s = ['Видеокарта', 'Материнская плата', 'Процессор']
+s = ['Видеокарта', 'Материнская плата', '', 'Процессор', '']
 
+#Заполнение таблицы структурой S
 for idx, val in enumerate(s):
     print(idx, val)
     response = requests.post('http://localhost:8040/tarantool_dummies',
-                              json={"method": "insert_catalogs", "params": [{'name': val}]})
+                              json={"method": "insert_catalogs", "params": [val]})
     if response.status_code != 200:
         print("Сервер БД недоступен")
     else:
         print(response.json())
 
+#Вывод таблицы
+response = requests.post('http://localhost:8040/tarantool_dummies',
+                          json={"method": "select_catalogs", "params": []})
+print(response.json())
 
+#Обновление поле name = nil знаением Empty
+response = requests.post('http://localhost:8040/tarantool_dummies',
+                          json={"method": "fix_nil_to_empty_catalogs", "params": []})
+#Вывод таблицы
 response = requests.post('http://localhost:8040/tarantool_dummies',
                           json={"method": "select_catalogs", "params": []})
 

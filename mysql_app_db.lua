@@ -7,7 +7,7 @@
 local M = {}
 
 M.start = function(self)
-    box.once("bootstrap.0.2", function()
+    box.once("bootstrap.0.1", function()
 
         if box.space.catalogs then
             box.space.catalogs:drop()
@@ -24,18 +24,19 @@ M.start = function(self)
             box.sequence.S:drop()
         end
 
-        box.schema.sequence.create('S',{min=0, start=0})
+        box.schema.sequence.create('S',{min=1, start=1})
 
         s:create_index('primary', {type = 'hash', parts = {'id'}})
         s:create_index('sec_name', {type = 'tree', unique = false, parts = {'name'}})
 
         box.schema.user.grant('guest','read,write,execute', 'universe')
-        log.info('bootstrap.0.2')
+        log.info('bootstrap.0.1')
     end)
 end
 
 function insert_catalogs(obj_catalogs)
-    local name = obj_catalogs['name']
+    local name = obj_catalogs
+        log.info(obj_catalogs)
         box.space.catalogs:insert{box.sequence.S:next(), name}
         log.info('Success add new data table catalogs')
     return 'Success add new data table catalogs'
@@ -45,6 +46,17 @@ function select_catalogs()
         local temp = box.space.catalogs:select{}
         log.info('Success select data table catalogs')
     return temp
+end
+
+function fix_nil_to_empty_catalogs()
+    local temp = box.space.catalogs:select{}
+    for key, value in ipairs(temp) do
+        if value[2] == '' then
+            box.space.catalogs:update({key}, {{'=', 2, 'Empty'}})
+            log.info('Success update data table catalogs')
+        end
+    end
+
 end
 
 
