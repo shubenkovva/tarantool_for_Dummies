@@ -18,4 +18,4 @@
 Конфигруционные файлы tarantool:
 
 	/usr/local/Cellar/tarantool/1.10.2.1_2/share/tarantool - конфиг БД
-	/usr/local/etc/tarantool/instances.available/ - конфиг прилодения БД
+	/usr/local/etc/tarantool/instances.available/ - конфиг приложения БД
