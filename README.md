@@ -6,7 +6,8 @@
   
 Инсталляция модуля upstream для nginx:
 
-	В моем случае я использувал сборку nginx openresty (https://github.com/openresty/lua-nginx-module). Скачиваем https://github.com/tarantool/nginx_upstream_module и распаковываем в проект openresty:
+	В моем случае я использувал сборку nginx openresty (https://github.com/openresty/lua-nginx-module). 
+	Скачиваем https://github.com/tarantool/nginx_upstream_module и распаковываем в проект openresty:
   
 	./configure --prefix=/opt/nginx \
          --with-ld-opt="-Wl,-rpath,/path/to/luajit-or-lua/lib" \
