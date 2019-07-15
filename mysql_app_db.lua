@@ -8,38 +8,54 @@ local M = {}
 
 M.start = function(self)
     box.once("bootstrap.0.1", function()
-
         if box.space.catalogs then
             box.space.catalogs:drop()
         end
-
         s = box.schema.space.create('catalogs')
-
         s:format({
             {name = 'id', type = 'unsigned'},
             {name = 'name', type = 'string'}
         })
-
-        if box.sequence.S then
-            box.sequence.S:drop()
+        if box.sequence.S_catalogs then
+            box.sequence.S_catalogs:drop()
         end
-
-        box.schema.sequence.create('S',{min=1, start=1})
-
+        box.schema.sequence.create('S_catalogs',{min=1, start=1})
         s:create_index('primary', {type = 'hash', parts = {'id'}})
         s:create_index('sec_name', {type = 'tree', unique = false, parts = {'name'}})
+
+        if box.space.file_path then
+            box.space.file_path:drop()
+        end
+        s = box.schema.space.create('file_path')
+        s:format({
+            {name = 'id', type = 'unsigned'},
+            {name = 'file_path', type = 'string'}
+        })
+        if box.sequence.S_file_path then
+            box.sequence.S_file_path:drop()
+        end
+        box.schema.sequence.create('S_file_path',{min=1, start=1})
+        s:create_index('primary', {type = 'hash', parts = {'id'}})
+        s:create_index('sec_name', {type = 'tree', unique = false, parts = {'file_path'}})
 
         box.schema.user.grant('guest','read,write,execute', 'universe')
         log.info('bootstrap.0.1')
     end)
 end
 
-function insert_catalogs(obj_catalogs)
-    local name = obj_catalogs
-        log.info(obj_catalogs)
-        box.space.catalogs:insert{box.sequence.S:next(), name}
+function insert_obj(obj_tab_name, obj)
+    local tab = obj_tab_name
+    local name = obj
+    if tab == 'catalogs' then
+        log.info(obj)
+        box.space.catalogs:insert{box.sequence.S_catalogs:next(), name}
         log.info('Success add new data table catalogs')
-    return 'Success add new data table catalogs'
+    elseif tab == 'file_path' then
+        log.info(obj)
+        box.space.file_path:insert{box.sequence.S_file_path:next(), name}
+        log.info('Success add new data table file_path')
+    end
+    return 'Success add new data table'
 end
 
 function select_catalogs()
@@ -52,11 +68,17 @@ function fix_nil_to_empty_catalogs()
     local temp = box.space.catalogs:select{}
     for key, value in ipairs(temp) do
         if value[2] == '' then
-            box.space.catalogs:update({key}, {{'=', 2, 'Empty'}})
-            log.info('Success update data table catalogs')
+            box.space.catalogs:update({value[1]}, {{'=', 2, 'Empty'}})
+            log.info('Success update data table catalogs'..key)
         end
     end
 
+end
+
+function truncate_catalogs()
+    box.space.catalogs:truncate()
+    log.info('Success truncate table catalogs')
+    return 'Success truncate table catalogs'
 end
 
 
@@ -69,7 +91,7 @@ function save_date_weather(obj_weather)
     local date    = obj_weather['date']
 
     if check_city_record(id_city, date) then
-        box.space.sp_weather:insert{box.sequence.S:next(), id_city, name, tempr, dt, date}
+        box.space.sp_weather:insert{box.sequence.S_catalogs:next(), id_city, name, tempr, dt, date}
         log.info('Success add new data save_date_weather')
         return 'Success add new data save_date_weather'
     else
@@ -79,7 +101,7 @@ function save_date_weather(obj_weather)
             box.space.sp_weather:delete(a[key][1])
         end
 
-        box.space.sp_weather:insert{box.sequence.S:next(), id_city, name, tempr, dt, date}
+        box.space.sp_weather:insert{box.sequence.S_catalogs:next(), id_city, name, tempr, dt, date}
         log.info('save_date_weather - date for exist record updated')
         return 'save_date_weather - date for exist record updated'
     end
