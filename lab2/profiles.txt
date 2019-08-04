@@ -1,0 +1,7 @@
+{
+"Profiles": [{"sex": "M", "hometown": "Tuchkovo", "birthday": "31/08/1987","photo_id":"empty"},
+             {"sex": "W", "hometown": "NovoAlexandrovs", "birthday": "17/03/1986","photo_id":"empty"},
+             {"sex": "W", "hometown": "Orel", "birthday": "05/03/1990","photo_id":"empty"},
+             {"sex": "M", "hometown": "Tuchkovo", "birthday": "01/08/1987","photo_id":"empty"},
+             {"sex": "M", "hometown": "Borovsk", "birthday": "05/08/1989","photo_id":"empty"}]
+}

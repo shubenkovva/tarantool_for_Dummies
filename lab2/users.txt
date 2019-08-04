@@ -1,0 +1,7 @@
+{
+"Users": [{"firstname": "Vyacheslav", "lastname": "Shubenkov", "email": "shubenkov@test.ru","created_at":"18/07/2019","updated_at":"18/07/2019"},
+          {"firstname": "Natalia", "lastname": "Kiruta", "email": "kiruta@test.ru", "created_at":"18/07/2019","updated_at":"18/07/2019"},
+          {"firstname": "Svetlava", "lastname": "Petrova", "email": "petrova@test.ru", "created_at":"19/07/2019","updated_at":"19/07/2019"},
+          {"firstname": "Pavel", "lastname": "Titov", "email": "titov@yandex.ru", "created_at":"19/07/2019","updated_at":"19/07/2019"},
+          {"firstname": "Mikhail", "lastname": "Krulov", "email": "krulov@test.ru", "created_at":"19/07/2019","updated_at":"19/07/2019"}]
+}

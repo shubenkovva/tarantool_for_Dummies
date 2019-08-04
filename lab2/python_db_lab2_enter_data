@@ -1,0 +1,56 @@
+import requests
+import datetime
+import json
+
+with open('users.txt') as json_file:
+    data_users = json.load(json_file)
+    json_file.close()
+
+with open('profiles.txt') as json_file:
+    data_profiles = json.load(json_file)
+    json_file.close()
+
+class cl_users:
+    def __init__(self, Users):
+        self.id = Users[0]
+        self.firstname  = Users[1]   #Users['firstname']
+        self.lastname   = Users[2]    #Users['lastname']
+        self.email      = Users[3]       #Users['email']
+        self.created_at = Users[4]  #Users['created_at']
+        self.updated_at = Users[5]  #Users['updated_at']
+    def add_profile(self, profiles):
+        self.user_id  = self.id
+        self.sex      = profiles['sex']
+        self.hometown = profiles['hometown']
+        self.birthday = profiles['birthday']
+        self.photo_id = profiles['photo_id']
+
+cl_users_list = []
+
+#Заполняем таблицу Users
+for k in data_users['Users']:
+    response = requests.post('http://localhost:8041/tarantool_dummies',
+                             json={"method": "insert_obj", "params": ['users', k]})
+    if response.status_code != 200:
+        print("Сервер БД недоступен")
+
+#Создаем объект users с профлем
+i = 0
+response = requests.post('http://localhost:8041/tarantool_dummies',
+                         json={"method": "select_users", "params": []})
+if response.status_code != 200:
+    print("Сервер БД недоступен")
+else:
+    for element in response.json()["result"][0]:
+        var_cl_users = cl_users(element)
+        var_cl_users.add_profile(data_profiles['Profiles'][i])
+        cl_users_list.append(var_cl_users)
+        i += 1
+        #Заполняем таблицу Profiles
+        response = requests.post('http://localhost:8041/tarantool_dummies',
+                                 json={"method": "insert_obj", "params": ['profiles', vars(var_cl_users)]})
+        if response.status_code != 200:
+            print("Сервер БД недоступен")
+        #Заполняем таблицу Profiles
+i = 0
+#Создаем объект users с профлем

@@ -1,37 +1,109 @@
-'''
-2)Спроектируйте базу данных, которая позволяла бы организовать хранение медиа-файлов,
-загружаемых пользователем (фото, аудио, видео).
-Сами файлы будут храниться в файловой системе,
-а база данных будет хранить только пути к файлам, названия, описания,
-ключевых слов и принадлежности пользователю.
-'''
-def application(environ, start_response):
-    import requests
-    import os
-    from subprocess import PIPE, run
-    #   start_response('200 OK', [('Content-Type', 'text/html')])
-    #   import urllib.parse
-    #   from cgi import parse_qs, escape
-    #   post_input = urllib.parse.parse_qs(environ['wsgi.input'].readline().decode(),True)
+import requests
+import datetime
+import json
+import python_db_lab2_func as fl
 
-    u = environ['wsgi.input'].read(int(environ.get('CONTENT_LENGTH', 0)))
-    filename = environ['HTTP_ZFILENAME']
-    f = open(filename, 'wb')
-    f.write(u)
-    f.close()
-
-    response = requests.post('http://localhost:8041/tarantool_dummies',
-                         json={"method": "insert_obj", "params": ['file_path', '/Users/user/Geekbrains/DataBase/tarantool_for_Dummies/' + filename]})
-    if response.status_code != 200:
-        s = {'status from DB': "Сервер БД недоступен"}
+class User:
+    def __init__(self, var_user_gl, var_profile_gl):
+        self.var_user_gl = var_user_gl
+        self.var_profile_gl = var_profile_gl
+    def refresh_my_data(self):
+        result, error = fl.func_get_user_by_email(self.var_user_gl[3])
+        if result is None and not error:
+            print("Введенное имя пользователя не существует = " + self.var_user_gl[3])
+        elif error:
+            print("Произошла ошибка " + error)
+i = 0
+while i == 0:
+    usermail = str(input("Введите email пользовтеля для авторизации:"))
+    result, error = fl.func_get_user_by_email(usermail)
+    if result is None and not error:
+        print("Введенное имя пользователя не существует = " + usermail)
+    elif error:
+        print("Произошла ошибка " + error)
     else:
-        s = {'status from DB': response.json()}
+        print("Вы успешно авторизованы " + str(result['Users']))
+        cl_my_user = User(result['Users'], result['Profiles'])
+        print('User email=' + cl_my_user.var_user_gl[3] + ' User_ID=' + str(cl_my_user.var_user_gl[0]))
+        i = 1
+answer = ''
+while answer != 'q':
+    print("[1] -  Напечатать информацию о себе")
+    print("[2] -  Вывести список друзей")
+    print("[3] -  Добавить друга")
+    print("[4] -  Принять друга")
+    try:
+        do = int(input("Укажите номер действия: "))
+    except ValueError:
+        do = 0
+    if do == 1:
+        cl_my_user.refresh_my_data()
+        print(cl_my_user.var_user_gl)
+        print(cl_my_user.var_profile_gl)
 
-    def out(command):
-        result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True, shell=True)
-        return result.stdout
+    elif do == 2:
+        result, error = fl.func_get_friend_from_friendship(cl_my_user.var_user_gl[0])
+        if result is None and not error:
+            print("У вас нет друзей")
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
+    elif do == 3:
+        var_useremail = str(input("Введите email или его часть:"))
+        while not var_useremail:
+            print('Введенное имя пользователя не существует, введите корректное имя пользователя')
+            var_useremail = str(input("Введите email или его часть:"))
+        result, error = fl.func_search_possible_friends_users(cl_my_user.var_user_gl[0], var_useremail)
+        if result is None and not error:
+            print('Для указаннго "' + var_useremail + '" не существует контакта')
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
+            i = 0
+            while i == 0:
+                try:
+                    f_user_id = int(input("Введите id пользователя для запроса в друзья: "))
+                    i = 1
+                except ValueError:
+                    print('Введите корректное id пользователя')
+            result, error = fl.func_add_friends_users(f_user_id, cl_my_user.var_user_gl[0])
+            if result is None and not error:
+                print('Для указаннго "' + f_user_id + '" не существует контакта')
+            elif error:
+                print("Произошла ошибка " + error)
+            else:
+                print("Статус запроса в друзья: ")
+                print(result)
+    elif do == 4:
+        result, error = fl.func_accept_friend_from_friendship(cl_my_user.var_user_gl[0])
+        if result is None and not error:
+            print("У вас запросов в друзья")
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
+        i = 0
+        while i == 0:
+            try:
+                f_user_id = int(input("Введите id пользователя для запроса в друзья: "))
+                i = 1
+            except ValueError:
+                print('Введите корректное id пользователя')
+            result, error = fl.func_accept_aprove_friend_from_friendship(f_user_id, cl_my_user.var_user_gl[0])
+            if result is None and not error:
+                print("Id не существует")
+            elif error:
+                print("Произошла ошибка " + error)
+            else:
+                print(result)
+    else:
+        print("Вы ввели некоректную команду")
+    answer = input("Введите q чтобы выйти или нажмите Enter, чтобы продолжить: ")
 
-    my_output = out("ls -ltr")
-    start_response('200 OK', [('Content-Type', 'text/html')])
 
-    return str(s['status from DB']).encode("utf-8")
+

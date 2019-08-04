@@ -4,116 +4,274 @@
 --- DateTime: 2019-04-30 14:31
 ---
 
+-- select from table, result temp[1..n][internal index]
+
 local M = {}
 
 M.start = function(self)
     box.once("bootstrap.0.1", function()
-        if box.space.catalogs then
-            box.space.catalogs:drop()
+        --users--####################
+        if box.space.users then
+            box.space.users:drop()
         end
-        s = box.schema.space.create('catalogs')
+        s = box.schema.space.create('users')
         s:format({
-            {name = 'id', type = 'unsigned'},
-            {name = 'name', type = 'string'}
+            {name = 'id', type = 'unsigned', is_nullable=false},
+            {name = 'firstname', type = 'string', is_nullable=false},
+            {name = 'lastname', type = 'string', is_nullable=false},
+            {name = 'email', type = 'string', is_nullable=false},
+            {name = 'created_at', type = 'string', is_nullable=false},
+            {name = 'updated_at', type = 'string', is_nullable=false}
         })
-        if box.sequence.S_catalogs then
-            box.sequence.S_catalogs:drop()
+        if box.sequence.S_users then
+            box.sequence.S_users:drop()
         end
-        box.schema.sequence.create('S_catalogs',{min=1, start=1})
-        s:create_index('primary', {type = 'hash', parts = {'id'}})
-        s:create_index('sec_name', {type = 'tree', unique = false, parts = {'name'}})
+        box.schema.sequence.create('S_users',{min=1, start=1})
+        s:create_index('users_primary_indx', {type = 'hash', parts = {'id'}})
+        s:create_index('users_firs_last_indx', {type = 'tree', unique = false, parts = {'firstname','lastname'}})
+        s:create_index('users_email_firs_last_indx', {type = 'tree', parts = {'email'}})
 
-        if box.space.file_path then
-            box.space.file_path:drop()
+        --profiles--##################
+        if box.space.profiles then
+            box.space.profiles:drop()
         end
-        s = box.schema.space.create('file_path')
+        s = box.schema.space.create('profiles')
         s:format({
-            {name = 'id', type = 'unsigned'},
-            {name = 'file_path', type = 'string'}
+            {name = 'user_id', type = 'unsigned', is_nullable=false},
+            {name = 'sex', type = 'string', is_nullable=false},
+            {name = 'hometown', type = 'string', is_nullable=false},
+            {name = 'birthday', type = 'string', is_nullable=false},
+            {name = 'photo_id', type = 'string', is_nullable=false}
         })
-        if box.sequence.S_file_path then
-            box.sequence.S_file_path:drop()
+        s:create_index('profiles_primary_indx', {type = 'hash', parts = {'user_id'}})
+
+        --friendship--##################
+        if box.space.friendship then
+            box.space.friendship:drop()
         end
-        box.schema.sequence.create('S_file_path',{min=1, start=1})
-        s:create_index('primary', {type = 'hash', parts = {'id'}})
-        s:create_index('sec_name', {type = 'tree', unique = false, parts = {'file_path'}})
+        s = box.schema.space.create('friendship')
+        s:format({
+            {name = 'user_id', type = 'unsigned', is_nullable=false},
+            {name = 'friend_id', type = 'unsigned', is_nullable=false},
+            {name = 'status', type = 'string', is_nullable=false},
+            {name = 'requested_at', type = 'string', is_nullable=false},
+            {name = 'confirmed_at', type = 'string', is_nullable=false}
+        })
+
+        s:create_index('friendship_primary_indx', {type = 'tree', unique = true, parts = {'user_id','friend_id'}})
+        s:create_index('friendship_primary_indx_user_id', {type = 'tree', unique = false, parts = {'user_id'}})
+        s:create_index('friendship_primary_indx_friend_id', {type = 'tree', unique = false, parts = {'friend_id'}})
 
         box.schema.user.grant('guest','read,write,execute', 'universe')
         log.info('bootstrap.0.1')
     end)
+  --  box.once("bootstrap.0.2", function()
+  --      box.space.friendship:create_index('friendship_primary_indx_user_id', {type = 'hash', parts = {'user_id'}})
+  --      box.space.friendship:create_index('friendship_primary_indx_friend_id', {type = 'hash', parts = {'friend_id'}})
+  --      log.info('bootstrap.0.2')
+  --  end)
 end
 
 function insert_obj(obj_tab_name, obj)
-    local tab = obj_tab_name
-    local name = obj
-    if tab == 'catalogs' then
+
+    if obj_tab_name == 'users' then
         log.info(obj)
-        box.space.catalogs:insert{box.sequence.S_catalogs:next(), name}
-        log.info('Success add new data table catalogs')
-    elseif tab == 'file_path' then
-        log.info(obj)
-        box.space.file_path:insert{box.sequence.S_file_path:next(), name}
-        log.info('Success add new data table file_path')
+        box.space.users:insert{box.sequence.S_users:next(),
+                               obj['firstname'],
+                               obj['lastname'],
+                               obj['email'],
+                               obj['created_at'],
+                               obj['updated_at']}
     end
-    return 'Success add new data table'
+
+    if obj_tab_name == 'profiles' then
+        log.info(obj)
+        box.space.profiles:insert{ obj['user_id'],
+                                   obj['sex'],
+                                   obj['hometown'],
+                                   obj['birthday'],
+                                   obj['photo_id']}
+    end
+
+    if obj_tab_name == 'friendship' then
+        log.info(obj)
+        box.space.friendship:insert{ obj['user_id'],
+                                     obj['friend_id'],
+                                     obj['status'],
+                                     obj['requested_at'],
+                                     obj['confirmed_at']}
+    end
+    return 'Success add new data table='..obj_tab_name
 end
 
-function select_catalogs()
-        local temp = box.space.catalogs:select{}
+function select_users()
+        local temp = box.space.users:select{}
         log.info('Success select data table catalogs')
     return temp
 end
 
-function fix_nil_to_empty_catalogs()
-    local temp = box.space.catalogs:select{}
-    for key, value in ipairs(temp) do
-        if value[2] == '' then
-            box.space.catalogs:update({value[1]}, {{'=', 2, 'Empty'}})
-            log.info('Success update data table catalogs'..key)
+function func_get_user_by_email(email)
+    local temp_u = {}
+    local temp = box.space.users.index[2]:select{email}
+    if next(temp) ~= nil then
+        temp_u['Users'] = temp[1]
+        temp = box.space.profiles.index.profiles_primary_indx:select{temp_u['Users'][1]}
+        if next(temp) ~= nil then
+            temp_u['Profiles'] = temp[1]
+            return temp_u -- return user with profile
+        else
+            return temp_u -- return just user
+        end
+    else
+        return nil -- no user
+    end
+end
+
+function func_get_user_by_email_user_id(email, user_id)
+    local parameter
+    local index
+    if email then
+        parameter = email
+        index = 2
+    else
+        parameter = user_id
+        index = 0
+    end
+    log.info(parameter..index)
+    local temp_u = {}
+    local temp = box.space.users.index[index]:select{parameter}
+    if next(temp) ~= nil then
+        temp_u['Users'] = temp[1]
+        temp = box.space.profiles.index.profiles_primary_indx:select{temp_u['Users'][1]}
+        if next(temp) ~= nil then
+            temp_u['Profiles'] = temp[1]
+            return temp_u -- return user with profile
+        else
+            return temp_u -- return just user
+        end
+    else
+        return nil -- no user
+    end
+end
+
+function func_get_friend_from_friendship(my_user_id)
+    local friends = {}
+    local temp_u = {}
+    local temp_friends_out = box.space.friendship.index.friendship_primary_indx_user_id:select{my_user_id}
+    for key, value in pairs(temp_friends_out) do
+ --       local temp = func_get_user_by_email_user_id(nil,value[2])
+        friends = {}
+        friends['Friend_id'] = value[2]
+        friends['Status'] = value[3]
+        friends['Requsted_time'] = value[4]
+        friends['Updated'] = value[5]
+        friends['Requested_by'] = value[1]
+        table.insert(temp_u, friends)
+    end
+    local temp_friends_in = box.space.friendship.index.friendship_primary_indx_friend_id:select{my_user_id}
+    for key, value in pairs(temp_friends_in) do
+        friends = {}
+        friends['Friend_id'] = value[1]
+        friends['Status'] = value[3]
+        friends['Requsted_time'] = value[4]
+        friends['Updated'] = value[5]
+        friends['Requested_by'] = value[1]
+        table.insert(temp_u, friends)
+    end
+    if next(temp_u) ~= nil then
+        return temp_u
+    else
+        return nil
+    end
+end
+
+function func_accept_friend_from_friendship(my_user_id)
+    local friends = {}
+    local temp_u = {}
+    local temp_friends_in = box.space.friendship.index.friendship_primary_indx_friend_id:select{my_user_id}
+    for key, value in pairs(temp_friends_in) do
+        if value[3] == 'initial' then
+            friends = {}
+            friends['Friend_id'] = value[1]
+            friends['Status'] = value[3]
+            friends['Requsted_time'] = value[4]
+            friends['Updated'] = value[5]
+            friends['Requested_by'] = value[1]
+            table.insert(temp_u, friends)
         end
     end
-
-end
-
-function truncate_catalogs()
-    box.space.catalogs:truncate()
-    log.info('Success truncate table catalogs')
-    return 'Success truncate table catalogs'
-end
-
-
-function save_date_weather(obj_weather)
-
-    local id_city = obj_weather['id']
-    local name    = obj_weather['name']
-    local tempr   = obj_weather['tempr']
-    local dt      = obj_weather['dt']
-    local date    = obj_weather['date']
-
-    if check_city_record(id_city, date) then
-        box.space.sp_weather:insert{box.sequence.S_catalogs:next(), id_city, name, tempr, dt, date}
-        log.info('Success add new data save_date_weather')
-        return 'Success add new data save_date_weather'
+    if next(temp_u) ~= nil then
+        return temp_u
     else
-        local a = box.space.sp_weather.index.sec_id_city_date:select{id_city, date}
+        return nil
+    end
+end
 
-        for key,value in pairs(a) do
-            box.space.sp_weather:delete(a[key][1])
+function func_accept_aprove_friend_from_friendship(f_user_id, my_user_id)
+    local temp = box.space.friendship.index.friendship_primary_indx:update({f_user_id, my_user_id}, {{'=', 3, 'Accepted'}})
+    if temp then
+        return "Friend "..f_user_id.." accepted"
+    else
+        return nil
+    end
+end
+
+function func_check_friend_in_friendship(f_user_id,my_user_id)
+    local temp = box.space.friendship.index.friendship_primary_indx:select({my_user_id,f_user_id})
+    if next(temp) then
+        return temp
+    else
+        temp = box.space.friendship.index.friendship_primary_indx:select({f_user_id,my_user_id})
+        if next(temp) then
+            return temp
+        else
+            return nil
         end
-
-        box.space.sp_weather:insert{box.sequence.S_catalogs:next(), id_city, name, tempr, dt, date}
-        log.info('save_date_weather - date for exist record updated')
-        return 'save_date_weather - date for exist record updated'
     end
 end
 
-function check_city_record(id_city, date)
-    local temp = box.space.sp_weather.index.sec_id_city_date:select{id_city, date}
-    if #temp == 0 then
-        return true
+function func_search_possible_friends_users(var_user_id, pattern)
+    local temp_u = {}
+    for k, v in pairs(box.space.users.index.users_email_firs_last_indx:select()) do
+        if  string.find(v[4], pattern) then
+            local var_check_friend = func_check_friend_in_friendship(var_user_id,v[1])
+            if not var_check_friend and var_user_id ~= v[1] then
+                table.insert(temp_u, v)
+            end
+        end
+    end
+    if next(temp_u) then
+        return temp_u
     else
-        return false
+        return nil
     end
 end
+
+
+function func_add_friends_users(f_user_id,my_user_id)
+    if f_user_id == my_user_id then
+        return nil
+    end
+    local turple = {}
+    local var_user = box.space.users.index.users_primary_indx:select(f_user_id)
+    log.info(var_user[1])
+    if var_user[1] then
+        local var_check_f = func_check_friend_in_friendship(f_user_id,my_user_id)
+        if var_check_f then
+            return "У вас уже есть друг "..f_user_id
+        else
+            turple['user_id'] = my_user_id
+            turple['friend_id'] = f_user_id
+            turple['status'] = 'initial'
+            turple['requested_at'] = '21072019'
+            turple['confirmed_at'] = '21072019'
+            log.info('insert')
+            return insert_obj("friendship", turple)
+        end
+    else
+        return nil
+    end
+end
+
 
 return M
