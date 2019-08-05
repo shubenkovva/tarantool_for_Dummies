@@ -4,8 +4,6 @@
 --- DateTime: 2019-04-30 14:31
 ---
 
--- select from table, result temp[1..n][internal index]
-
 local M = {}
 
 M.start = function(self)
@@ -64,16 +62,35 @@ M.start = function(self)
 
         box.schema.user.grant('guest','read,write,execute', 'universe')
         log.info('bootstrap.0.1')
+        if box.space.messages then
+            box.space.messages:drop()
+        end
+        s = box.schema.space.create('messages')
+        s:format({
+            {name = 'id', type = 'unsigned', is_nullable=false},
+            {name = 'from_user_id', type = 'unsigned', is_nullable=false},
+            {name = 'to_user_id', type = 'unsigned', is_nullable=false},
+            {name = 'body', type = 'string', is_nullable=false},
+            {name = 'delivered', type = 'boolean', is_nullable=false},
+            {name = 'created_at', type = 'string', is_nullable=false}
+        })
+        s:create_index('messages_primary_indx', {type = 'tree', unique = true, parts = {'id'}})
+        s:create_index('messages_secondary_indx', {type = 'tree', unique = false, parts = {'from_user_id','to_user_id'}})
+        s:create_index('messages_secondary_delivered', {type = 'tree', unique = false, parts = {'delivered'}})
+        s:create_index('messages_secondary_indx_from_user_id', {type = 'tree', unique = false, parts = {'from_user_id'}})
+        s:create_index('messages_secondary_indx_to_user_id', {type = 'tree', unique = false, parts = {'to_user_id'}})
+        log.info('bootstrap.0.2')
     end)
-  --  box.once("bootstrap.0.2", function()
-  --      box.space.friendship:create_index('friendship_primary_indx_user_id', {type = 'hash', parts = {'user_id'}})
-  --      box.space.friendship:create_index('friendship_primary_indx_friend_id', {type = 'hash', parts = {'friend_id'}})
-  --      log.info('bootstrap.0.2')
-  --  end)
+    box.once("bootstrap.0.2", function()
+        if box.sequence.S_messages then
+            box.sequence.S_messages:drop()
+        end
+        box.schema.sequence.create('S_messages',{min=1, start=1})
+    end)
 end
 
 function insert_obj(obj_tab_name, obj)
-
+    local temp = {}
     if obj_tab_name == 'users' then
         log.info(obj)
         box.space.users:insert{box.sequence.S_users:next(),
@@ -83,7 +100,6 @@ function insert_obj(obj_tab_name, obj)
                                obj['created_at'],
                                obj['updated_at']}
     end
-
     if obj_tab_name == 'profiles' then
         log.info(obj)
         box.space.profiles:insert{ obj['user_id'],
@@ -92,7 +108,6 @@ function insert_obj(obj_tab_name, obj)
                                    obj['birthday'],
                                    obj['photo_id']}
     end
-
     if obj_tab_name == 'friendship' then
         log.info(obj)
         box.space.friendship:insert{ obj['user_id'],
@@ -101,7 +116,22 @@ function insert_obj(obj_tab_name, obj)
                                      obj['requested_at'],
                                      obj['confirmed_at']}
     end
-    return 'Success add new data table='..obj_tab_name
+    if obj_tab_name == 'messages' then
+        log.info(obj)
+        temp = box.space.messages:insert{   box.sequence.S_messages:next(),
+                                     obj['from_user_id'],
+                                     obj['to_user_id'],
+                                     obj['body'],
+                                     obj['delivered'],
+                                     obj['created_at']}
+    end
+
+    if temp then
+        return 'Success add new data table='..obj_tab_name
+    else
+        return nil
+    end
+
 end
 
 function select_users()
@@ -159,7 +189,6 @@ function func_get_friend_from_friendship(my_user_id)
     local temp_u = {}
     local temp_friends_out = box.space.friendship.index.friendship_primary_indx_user_id:select{my_user_id}
     for key, value in pairs(temp_friends_out) do
- --       local temp = func_get_user_by_email_user_id(nil,value[2])
         friends = {}
         friends['Friend_id'] = value[2]
         friends['Status'] = value[3]
@@ -185,12 +214,12 @@ function func_get_friend_from_friendship(my_user_id)
     end
 end
 
-function func_accept_friend_from_friendship(my_user_id)
+function func_status_friend_from_friendship(my_user_id, status)
     local friends = {}
     local temp_u = {}
     local temp_friends_in = box.space.friendship.index.friendship_primary_indx_friend_id:select{my_user_id}
     for key, value in pairs(temp_friends_in) do
-        if value[3] == 'initial' then
+        if value[3] == status then
             friends = {}
             friends['Friend_id'] = value[1]
             friends['Status'] = value[3]
@@ -198,6 +227,20 @@ function func_accept_friend_from_friendship(my_user_id)
             friends['Updated'] = value[5]
             friends['Requested_by'] = value[1]
             table.insert(temp_u, friends)
+        end
+    end
+    if status == 'Accepted' then
+        local temp_friends_out = box.space.friendship.index.friendship_primary_indx_user_id:select{my_user_id}
+        for key, value in pairs(temp_friends_out) do
+            if value[3] == status then
+                friends = {}
+                friends['Friend_id'] = value[2]
+                friends['Status'] = value[3]
+                friends['Requsted_time'] = value[4]
+                friends['Updated'] = value[5]
+                friends['Requested_by'] = value[1]
+                table.insert(temp_u, friends)
+            end
         end
     end
     if next(temp_u) ~= nil then
@@ -210,6 +253,7 @@ end
 function func_accept_aprove_friend_from_friendship(f_user_id, my_user_id)
     local temp = box.space.friendship.index.friendship_primary_indx:update({f_user_id, my_user_id}, {{'=', 3, 'Accepted'}})
     if temp then
+        box.space.friendship.index.friendship_primary_indx:update({f_user_id, my_user_id}, {{'=', 5, os.date()}})
         return "Friend "..f_user_id.." accepted"
     else
         return nil
@@ -263,8 +307,8 @@ function func_add_friends_users(f_user_id,my_user_id)
             turple['user_id'] = my_user_id
             turple['friend_id'] = f_user_id
             turple['status'] = 'initial'
-            turple['requested_at'] = '21072019'
-            turple['confirmed_at'] = '21072019'
+            turple['requested_at'] =  os.date()
+            turple['confirmed_at'] = '00000000'
             log.info('insert')
             return insert_obj("friendship", turple)
         end
@@ -273,5 +317,79 @@ function func_add_friends_users(f_user_id,my_user_id)
     end
 end
 
+
+function func_write_message(from_user_id, to_user_id, body)
+    local turple = {}
+    local temp = func_check_friend_in_friendship(from_user_id,to_user_id)
+    if next(temp) then
+        if temp[1][3] == 'Accepted' then
+            turple['from_user_id'] = from_user_id
+            turple['to_user_id'] = to_user_id
+            turple['body'] = body
+            turple['delivered'] =  false
+            turple['created_at'] = os.date()
+            log.info('insert_message')
+            return insert_obj("messages", turple)
+        else
+            return nil
+        end
+    else
+        return nil
+    end
+end
+
+function func_read_new_message(my_user)
+    local turple = {}
+    local temp = box.space.messages.index.messages_secondary_indx_to_user_id:select(my_user)
+    if next(temp) then
+        for key, value in pairs(temp) do
+            if not value[5] then
+                table.insert(turple, value)
+                box.space.messages.index.messages_primary_indx:update(value[1], {{'=', 5, true}})
+            end
+        end
+    end
+    if next(turple) then
+        return turple
+    else
+        return nil
+    end
+end
+
+function func_check_write_message(my_user_id, f_user_id)
+    local status = false
+    local temp = box.space.friendship.index.friendship_primary_indx:select({my_user_id, f_user_id})
+    if next(temp) then
+        if temp[1][3] == 'Accepted' then
+            status = true
+        end
+    end
+    local temp = box.space.friendship.index.friendship_primary_indx:select({f_user_id, my_user_id})
+    if next(temp) then
+        if temp[1][3] == 'Accepted' then
+            status = true
+        end
+    end
+    if status then
+        return "ok"
+    else
+        return nil
+    end
+end
+
+function func_read_all_message(my_user)
+    local turple = {}
+    local temp = box.space.messages.index.messages_secondary_indx_to_user_id:select(my_user)
+    if next(temp) then
+        for key, value in pairs(temp) do
+                table.insert(turple, value)
+        end
+    end
+    if next(turple) then
+        return turple
+    else
+        return nil
+    end
+end
 
 return M

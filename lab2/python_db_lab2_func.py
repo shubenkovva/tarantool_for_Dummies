@@ -34,9 +34,9 @@ def func_get_friend_from_friendship(var_user):
     response, error = func_process_response(response)
     return response, error
 
-def func_accept_friend_from_friendship(var_user):
+def func_status_friend_from_friendship(var_user, status):
     response = requests.post('http://localhost:8041/tarantool_dummies',
-                             json={"method": "func_accept_friend_from_friendship", "params": [var_user]})
+                             json={"method": "func_status_friend_from_friendship", "params": [var_user, status]})
     response, error = func_process_response(response)
     return response, error
 
@@ -61,5 +61,29 @@ def func_add_friends_users(f_user_id, var_my_user_id):
 def func_accept_friend(f_user_id, my_user_id):
     response = requests.post('http://localhost:8041/tarantool_dummies',
                              json={"method": "func_accept_friend", "params": [f_user_id, my_user_id]})
+    response, error = func_process_response(response)
+    return response, error
+
+def func_check_write_message(my_user_id, f_user_id):
+    response = requests.post('http://localhost:8041/tarantool_dummies',
+                             json={"method": "func_check_write_message", "params": [my_user_id, f_user_id]})
+    response, error = func_process_response(response)
+    return response, error
+
+def func_write_message(my_user_id,f_user_id, body_text):
+    response = requests.post('http://localhost:8041/tarantool_dummies',
+                             json={"method": "func_write_message", "params": [my_user_id, f_user_id, body_text]})
+    response, error = func_process_response(response)
+    return response, error
+
+def func_read_new_message(my_user_id):
+    response = requests.post('http://localhost:8041/tarantool_dummies',
+                             json={"method": "func_read_new_message", "params": [my_user_id]})
+    response, error = func_process_response(response)
+    return response, error
+
+def func_read_all_message(my_user_id):
+    response = requests.post('http://localhost:8041/tarantool_dummies',
+                             json={"method": "func_read_all_message", "params": [my_user_id]})
     response, error = func_process_response(response)
     return response, error

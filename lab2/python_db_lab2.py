@@ -32,6 +32,9 @@ while answer != 'q':
     print("[2] -  Вывести список друзей")
     print("[3] -  Добавить друга")
     print("[4] -  Принять друга")
+    print("[5] -  Написать сообщение другу")
+    print("[6] -  Прочитать новые входящие сообщения")
+    print("[7] -  Прочитать все входящие сообщения")
     try:
         do = int(input("Укажите номер действия: "))
     except ValueError:
@@ -72,38 +75,87 @@ while answer != 'q':
                     print('Введите корректное id пользователя')
             result, error = fl.func_add_friends_users(f_user_id, cl_my_user.var_user_gl[0])
             if result is None and not error:
-                print('Для указаннго "' + f_user_id + '" не существует контакта')
+                print('Для указаннго "' + str(f_user_id) + '" не существует контакта')
             elif error:
                 print("Произошла ошибка " + error)
             else:
                 print("Статус запроса в друзья: ")
                 print(result)
+
     elif do == 4:
-        result, error = fl.func_accept_friend_from_friendship(cl_my_user.var_user_gl[0])
+        result, error = fl.func_status_friend_from_friendship(cl_my_user.var_user_gl[0], 'initial')
         if result is None and not error:
-            print("У вас запросов в друзья")
+            print("У вас нет запросов в друзья")
         elif error:
             print("Произошла ошибка " + error)
         else:
             for i in result:
                 print(i)
-        i = 0
-        while i == 0:
-            try:
-                f_user_id = int(input("Введите id пользователя для запроса в друзья: "))
-                i = 1
-            except ValueError:
-                print('Введите корректное id пользователя')
-            result, error = fl.func_accept_aprove_friend_from_friendship(f_user_id, cl_my_user.var_user_gl[0])
+            i = 0
+            while i == 0:
+                try:
+                    f_user_id = int(input("Введите id пользователя для запроса в друзья: "))
+                    i = 1
+                except ValueError:
+                    print('Введите корректное id пользователя')
+                result, error = fl.func_accept_aprove_friend_from_friendship(f_user_id, cl_my_user.var_user_gl[0])
+                if result is None and not error:
+                    print("Id не существует")
+                elif error:
+                    print("Произошла ошибка " + error)
+                else:
+                    print(result)
+    elif do == 5:
+        result, error = fl.func_status_friend_from_friendship(cl_my_user.var_user_gl[0], 'Accepted')
+        if result is None and not error:
+            print("У вас нет друзей")
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
+            i = 0
+            while i == 0:
+                try:
+                    f_user_id = int(input("Введите id пользователя что бы написать сообщение: "))
+                    i = 1
+                except ValueError:
+                    print('Введите корректное id пользователя')
+            result, error = fl.func_check_write_message(cl_my_user.var_user_gl[0], f_user_id)
             if result is None and not error:
-                print("Id не существует")
+                print("У вас нет друзей")
             elif error:
                 print("Произошла ошибка " + error)
             else:
-                print(result)
+                body_text = str(input("Введите сообщение: "))
+                result, error = fl.func_write_message(cl_my_user.var_user_gl[0], f_user_id, body_text)
+                if result is None and not error:
+                    print("У вас нет друзей")
+                elif error:
+                    print("Произошла ошибка " + error)
+                else:
+                    print(result)
+    elif do == 6:
+        result, error = fl.func_read_new_message(cl_my_user.var_user_gl[0])
+        if result is None and not error:
+            print("У вас нет новых сообщений")
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
+
+    elif do == 7:
+        result, error = fl.func_read_all_message(cl_my_user.var_user_gl[0])
+        if result is None and not error:
+            print("У вас нет новых сообщений")
+        elif error:
+            print("Произошла ошибка " + error)
+        else:
+            for i in result:
+                print(i)
     else:
-        print("Вы ввели некоректную команду")
-    answer = input("Введите q чтобы выйти или нажмите Enter, чтобы продолжить: ")
+        answer = input("Введите q чтобы выйти или нажмите Enter, чтобы продолжить: ")
 
 
 
