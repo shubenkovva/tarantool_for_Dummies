@@ -14,6 +14,7 @@ class User:
         elif error:
             print("Произошла ошибка " + error)
 i = 0
+
 while i == 0:
     usermail = str(input("Введите email пользовтеля для авторизации:"))
     result, error = fl.func_get_user_by_email(usermail)
