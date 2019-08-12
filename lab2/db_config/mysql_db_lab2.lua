@@ -3,7 +3,7 @@
 --- Created by user.
 --- DateTime: 2019-04-29 19:14
 ---
-db = require('mysql_app_db_lab2')
+db = require('shard_app_db_lab3')
 log = require('log')
 
 box.cfg
