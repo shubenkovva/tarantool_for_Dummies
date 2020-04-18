@@ -1,8 +1,9 @@
 import asyncio
 
-async def main():
-    print('hello')
-    await asyncio.sleep(1)
-    print('world')
+async def say(what, when):
+    await asyncio.sleep(when)
+    print(what)
 
-asyncio.run(main())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(say('hello world', 1))
+loop.close()

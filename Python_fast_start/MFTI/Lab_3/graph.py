@@ -199,6 +199,16 @@ def penColor(c=-1, g=-1, b=-1):
     else:
         return _penColor
 
+def el(x, y, R, kx=1, ky=1):
+    x1 = x - R*kx; y1 = y - R*ky
+    x2 = x + R*kx; y2 = y + R*ky
+    x1, y1 = transformCoord ( x1, y1 )
+    x2, y2 = transformCoord ( x2, y2 )
+    circ1 = _C.create_oval(x1, y1, x2, y2,
+                           outline = _penColor,
+                           width = _penSize,
+                           fill = _brushColor)
+    return circ1
 
 def penSize(c=-1):
     global _penSize
